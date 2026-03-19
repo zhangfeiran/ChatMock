@@ -7,10 +7,9 @@ from typing import Any, Dict, List
 
 from flask import Blueprint, Response, current_app, jsonify, make_response, request, stream_with_context
 
-from .config import BASE_INSTRUCTIONS, GPT5_CODEX_INSTRUCTIONS
 from .limits import record_rate_limits_from_response
 from .http import build_cors_headers
-from .model_registry import list_public_models, uses_codex_instructions
+from .model_registry import list_public_models
 from .reasoning import (
     allowed_efforts_for_model,
     build_reasoning_param,
@@ -18,7 +17,11 @@ from .reasoning import (
 )
 from .transform import convert_ollama_messages, normalize_ollama_tools
 from .upstream import normalize_model_name, start_upstream_request
-from .utils import convert_chat_messages_to_responses_input, convert_tools_chat_to_responses
+from .utils import (
+    convert_chat_messages_to_responses_input,
+    convert_tools_chat_to_responses,
+    extract_instructions_from_messages,
+)
 
 
 ollama_bp = Blueprint("ollama", __name__)
@@ -68,16 +71,6 @@ def ollama_version() -> Response:
     if bool(current_app.config.get("VERBOSE")):
         _log_json("OUT GET /api/version", payload)
     return resp
-
-
-def _instructions_for_model(model: str) -> str:
-    base = current_app.config.get("BASE_INSTRUCTIONS", BASE_INSTRUCTIONS)
-    if uses_codex_instructions(model):
-        codex = current_app.config.get("GPT5_CODEX_INSTRUCTIONS") or GPT5_CODEX_INSTRUCTIONS
-        if isinstance(codex, str) and codex.strip():
-            return codex
-    return base
-
 
 _OLLAMA_FAKE_EVAL = {
     "total_duration": 8497226791,
@@ -192,12 +185,7 @@ def ollama_chat() -> Response:
     messages = convert_ollama_messages(
         raw_messages, payload.get("images") if isinstance(payload.get("images"), list) else None
     )
-    if isinstance(messages, list):
-        sys_idx = next((i for i, m in enumerate(messages) if isinstance(m, dict) and m.get("role") == "system"), None)
-        if isinstance(sys_idx, int):
-            sys_msg = messages.pop(sys_idx)
-            content = sys_msg.get("content") if isinstance(sys_msg, dict) else ""
-            messages.insert(0, {"role": "user", "content": content})
+    instructions, messages = extract_instructions_from_messages(messages)
     stream_req = payload.get("stream")
     if stream_req is None:
         stream_req = True
@@ -257,7 +245,7 @@ def ollama_chat() -> Response:
     upstream, error_resp = start_upstream_request(
         normalized_model,
         input_items,
-        instructions=_instructions_for_model(normalized_model),
+        instructions=instructions,
         tools=tools_responses,
         tool_choice=tool_choice,
         parallel_tool_calls=parallel_tool_calls,
@@ -297,7 +285,7 @@ def ollama_chat() -> Response:
             upstream2, err2 = start_upstream_request(
                 normalize_model_name(model),
                 input_items,
-                instructions=BASE_INSTRUCTIONS,
+                instructions=instructions,
                 tools=base_tools_only,
                 tool_choice=safe_choice,
                 parallel_tool_calls=parallel_tool_calls,
