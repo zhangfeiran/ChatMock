@@ -401,7 +401,7 @@ def completions() -> Response:
     upstream, error_resp = start_upstream_request(
         model,
         input_items,
-        instructions=None,
+        instructions="",
         reasoning_param=reasoning_param,
     )
     if error_resp is not None:

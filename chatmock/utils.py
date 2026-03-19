@@ -87,7 +87,7 @@ def generate_pkce() -> "PkceCodes":
 
 def extract_instructions_from_messages(
     messages: List[Dict[str, Any]] | None,
-) -> Tuple[str | None, List[Dict[str, Any]]]:
+) -> Tuple[str, List[Dict[str, Any]]]:
     def _content_to_text(content: Any) -> str:
         if isinstance(content, str):
             return content
@@ -120,7 +120,7 @@ def extract_instructions_from_messages(
         remaining.append(message)
 
     instructions = "\n\n".join(instructions_parts).strip()
-    return (instructions or None), remaining
+    return (instructions or ""), remaining
 
 
 def convert_chat_messages_to_responses_input(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
