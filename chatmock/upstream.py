@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import requests
-from flask import Response, current_app, jsonify, make_response
+from flask import current_app, jsonify, make_response, request as flask_request
 
 from .config import CHATGPT_RESPONSES_URL
 from .http import build_cors_headers
 from .model_registry import normalize_model_name
 from .session import ensure_session_id
-from flask import request as flask_request
 from .utils import get_effective_chatgpt_auth
+from .verbose_dump import DumpingResponse, create_chatgpt_verbose_dump
 
 
 def _log_json(prefix: str, payload: Any) -> None:
@@ -99,6 +99,16 @@ def start_upstream_request(
         "session_id": session_id,
     }
 
+    verbose_dump = None
+    if verbose:
+        verbose_dump = create_chatgpt_verbose_dump("POST", CHATGPT_RESPONSES_URL, responses_payload)
+        if verbose_dump is not None:
+            try:
+                print(f"ChatGPT verbose request dump: {verbose_dump.request_path}")
+                print(f"ChatGPT verbose response dump: {verbose_dump.response_path}")
+            except Exception:
+                pass
+
     try:
         upstream = requests.post(
             CHATGPT_RESPONSES_URL,
@@ -112,4 +122,6 @@ def start_upstream_request(
         for k, v in build_cors_headers().items():
             resp.headers.setdefault(k, v)
         return None, resp
+    if verbose_dump is not None:
+        upstream = DumpingResponse(upstream, verbose_dump)
     return upstream, None

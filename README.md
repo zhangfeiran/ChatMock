@@ -159,6 +159,11 @@ You can enable it by starting the server with this parameter, which will allow O
 - `--expose-reasoning-models`<br>
 If your preferred app doesn’t support selecting reasoning effort, or you just want a simpler approach, this parameter exposes each reasoning level as a separate, queryable model. Each reasoning level also appears individually under ⁠/v1/models, so model pickers in your favorite chat apps will list all reasoning options as distinct models you can switch between.
 
+### Verbose dumps
+
+- `--verbose`<br>
+In addition to printing request and stream logs, ChatMock writes the ChatGPT Responses API request body and raw response stream under `CHATGPT_LOCAL_HOME/verbose-dumps` with timestamped filenames.
+
 ## Notes
 If you wish to have the fastest responses, I'd recommend setting `--reasoning-effort` to low, and `--reasoning-summary` to none. <br>
 All parameters and choices can be seen by sending `python chatmock.py serve --h`<br>
