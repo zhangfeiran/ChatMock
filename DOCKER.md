@@ -30,7 +30,8 @@ Set options in `.env` or pass environment variables:
 - `CHATGPT_LOCAL_ENABLE_WEB_SEARCH`: `true|false` to enable default web search tool
 
 ## Logs
-Set `VERBOSE=true` to include extra logging for troubleshooting upstream or chat app requests. Please include and use these logs when submitting bug reports.
+<!-- Set `VERBOSE=true` to include extra logging for troubleshooting upstream or chat app requests. Please include and use these logs when submitting bug reports. -->
+Set `VERBOSE=true` to include extra logging for debugging issues in upstream or chat app requests. ChatGPT Responses API request bodies and raw response streams are also written under `$CHATGPT_LOCAL_HOME/verbose-dumps` with timestamped filenames. Please include and use these logs when submitting bug reports.
 
 ## Test
 

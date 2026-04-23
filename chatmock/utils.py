@@ -85,6 +85,44 @@ def generate_pkce() -> "PkceCodes":
     return PkceCodes(code_verifier=code_verifier, code_challenge=code_challenge)
 
 
+def extract_instructions_from_messages(
+    messages: List[Dict[str, Any]] | None,
+) -> Tuple[str, List[Dict[str, Any]]]:
+    def _content_to_text(content: Any) -> str:
+        if isinstance(content, str):
+            return content
+        if not isinstance(content, list):
+            return ""
+
+        parts: List[str] = []
+        for part in content:
+            if not isinstance(part, dict):
+                continue
+            ptype = part.get("type")
+            if ptype not in (None, "text", "input_text", "output_text"):
+                continue
+            text = part.get("text") or part.get("content") or ""
+            if isinstance(text, str) and text:
+                parts.append(text)
+        return "\n".join(parts)
+
+    remaining: List[Dict[str, Any]] = []
+    instructions_parts: List[str] = []
+    for message in messages if isinstance(messages, list) else []:
+        if not isinstance(message, dict):
+            continue
+        role = message.get("role")
+        if role in ("system", "developer"):
+            text = _content_to_text(message.get("content"))
+            if text.strip():
+                instructions_parts.append(text.strip())
+            continue
+        remaining.append(message)
+
+    instructions = "\n\n".join(instructions_parts).strip()
+    return (instructions or ""), remaining
+
+
 def convert_chat_messages_to_responses_input(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     def _normalize_image_data_url(url: str) -> str:
         try:
@@ -117,7 +155,7 @@ def convert_chat_messages_to_responses_input(messages: List[Dict[str, Any]]) -> 
     input_items: List[Dict[str, Any]] = []
     for message in messages:
         role = message.get("role")
-        if role == "system":
+        if role in ("system", "developer"):
             continue
 
         if role == "tool":

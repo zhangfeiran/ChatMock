@@ -165,6 +165,11 @@ All flags go after `chatmock serve`. These can also be set as environment variab
 
 <br>
 
+### Verbose dumps
+
+- `--verbose`<br>
+In addition to printing request and stream logs, ChatMock writes the ChatGPT Responses API request body and raw response stream under `CHATGPT_LOCAL_HOME/verbose-dumps` with timestamped filenames.
+
 ## Notes
 
 Use responsibly and at your own risk. This project is not affiliated with OpenAI.

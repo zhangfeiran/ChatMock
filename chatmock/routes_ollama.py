@@ -20,7 +20,11 @@ from .reasoning import (
 )
 from .transform import convert_ollama_messages, normalize_ollama_tools
 from .upstream import normalize_model_name, start_upstream_request
-from .utils import convert_chat_messages_to_responses_input, convert_tools_chat_to_responses
+from .utils import (
+    convert_chat_messages_to_responses_input,
+    convert_tools_chat_to_responses,
+    extract_instructions_from_messages,
+)
 
 
 ollama_bp = Blueprint("ollama", __name__)
@@ -189,12 +193,7 @@ def ollama_chat() -> Response:
     messages = convert_ollama_messages(
         raw_messages, payload.get("images") if isinstance(payload.get("images"), list) else None
     )
-    if isinstance(messages, list):
-        sys_idx = next((i for i, m in enumerate(messages) if isinstance(m, dict) and m.get("role") == "system"), None)
-        if isinstance(sys_idx, int):
-            sys_msg = messages.pop(sys_idx)
-            content = sys_msg.get("content") if isinstance(sys_msg, dict) else ""
-            messages.insert(0, {"role": "user", "content": content})
+    instructions, messages = extract_instructions_from_messages(messages)
     stream_req = payload.get("stream")
     if stream_req is None:
         stream_req = True
@@ -267,7 +266,7 @@ def ollama_chat() -> Response:
     upstream, error_resp = start_upstream_request(
         normalized_model,
         input_items,
-        instructions=_instructions_for_model(normalized_model),
+        instructions=instructions,
         tools=tools_responses,
         tool_choice=tool_choice,
         parallel_tool_calls=parallel_tool_calls,
@@ -308,7 +307,7 @@ def ollama_chat() -> Response:
             upstream2, err2 = start_upstream_request(
                 normalize_model_name(model, current_app.config.get("DEBUG_MODEL")),
                 input_items,
-                instructions=BASE_INSTRUCTIONS,
+                instructions=instructions,
                 tools=base_tools_only,
                 tool_choice=safe_choice,
                 parallel_tool_calls=parallel_tool_calls,
